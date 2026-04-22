@@ -145,6 +145,7 @@ where
     }
 
     pub fn push(&mut self, elem: T) {
+        self.version += 1;
         let parent_link = self.find_parent_node(&elem);
 
         if let Some(mut parent) = parent_link {
@@ -154,19 +155,25 @@ where
 
             // Creates the new node after the check (prevents moving elem)
             let new_node = Node::new(elem, parent_link, None, None);
-            // NonNull::new already returns an option (because of the null check).
-            // So we don't need to wrap it into a Some()
+            // NonNull::new already returns an option (because of the null check),
+            // so we don't need to wrap it into a Some()
             let link = NonNull::new(Box::into_raw(Box::new(new_node)));
 
             if is_left_child {
+                // TODO: parent.set_left_child
                 parent.left = link;
             } else {
+                // TODO: parent.set_right_child
                 parent.right = link;
             }
         } else {
             // Edge case: tree is empty
+            self.root_history.push((self.version, self.root));
             let new_node = Node::new(elem, None, None, None);
             self.root = NonNull::new(Box::into_raw(Box::new(new_node)))
         }
     }
 }
+
+// TODO: impl Drop :P
+// i <3 memory leaks
