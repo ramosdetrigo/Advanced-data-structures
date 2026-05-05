@@ -20,7 +20,9 @@ mod pbtree_test {
 
         for i in 0..=tree.version() {
             println!("====== TREE AT VERSION {i} ======");
-            println!("{}", tree.list(i));
+            println!("{:?}", tree.successor(&10, i));
+            // println!("{}", tree.list(i));
         }
+
     }
 }

@@ -12,6 +12,7 @@ pub struct PBTree<T>
 where
     T: PartialOrd + Clone,
 {
+    // TODO: we need a way to update root_history if the root has changed
     root_history: Vec<(Link<T>, usize)>,
     version: usize,
     _t: PhantomData<T>,
