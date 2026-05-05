@@ -63,9 +63,12 @@ where
 
     pub fn root(&self, version: usize) -> Link<T> {
         let mut root: Link<T> = None;
+
         for (link, root_version) in &self.root_history {
-            if version <= *root_version {
+            if *root_version <= version {
                 root = link.clone()
+            } else {
+                break;
             }
         }
         root
