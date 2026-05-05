@@ -1,6 +1,6 @@
 use super::*;
 
-type NodePtr<T> = NonNull<Node<T>>;
+pub type NodePtr<T> = NonNull<Node<T>>;
 pub type Link<T> = Option<NodePtr<T>>;
 
 const P: usize = 3; // Número de ponteiros em um nó
@@ -9,10 +9,10 @@ pub struct Node<T>
 where
     T: PartialOrd + Clone,
 {
-    value: T,
-    parent: Link<T>,
-    left: Link<T>,
-    right: Link<T>,
+    pub value: T,
+    pub parent: Link<T>,
+    pub left: Link<T>,
+    pub right: Link<T>,
     // NOTE: Since we're using a vec, the P and 2P restrictions need to be enforced via code!
     return_pts: Vec<ReturnPtr<T>>, // P = 3
     mods: Vec<Modification<T>>,    // 2P = 6
@@ -141,17 +141,8 @@ where
     pub fn add_mod(&mut self, modifier: Modification<T>) -> Link<T> {
         // Constraint: the mods field max size is P * 2
         if self.mods.len() == P * 2 {
-            Some(self.add_mod_full(modifier))
-        } else {
-            self.add_mod_empty(modifier, None);
-            None
+            return Some(self.add_mod_full(modifier));
         }
-    }
-
-    fn add_mod_empty(&mut self, modifier: Modification<T>, old_node: Link<T>) {
-        // Ponteiro pro nó antigo. Aponta pro nó atual se old_node = None
-        // Útil pro add_mod_full não causar muita confusão.
-        let old_node_ptr = old_node.unwrap_or(self.as_ptr());
 
         // Case 1: value update
         if let ModTarget::Value(_) = modifier.modification {
@@ -161,46 +152,32 @@ where
             let current = self.with_mods();
 
             // old_ptr: Ponteiro pro nó antigo do campo modificado
-            // old_ret_ptr: Ponteiro de retorno pro nó antigo
-            // new_ret_ptr: Ponteiro de retorno pro nó novo
+            // ret_ptr: Padrão do ponteiro de retorno esperado
             // new_ptr: Novo ponteiro do campo modificado
-            let (old_ptr, old_ret_ptr, new_ret_ptr, new_ptr) = match modifier.modification {
-                ModTarget::Right(ptr) => (
-                    current.right,
-                    ReturnPtr::RightOf(old_node_ptr),
-                    ReturnPtr::RightOf(self.as_ptr()),
-                    ptr,
-                ),
-                ModTarget::Left(ptr) => (
-                    current.left,
-                    ReturnPtr::LeftOf(old_node_ptr),
-                    ReturnPtr::LeftOf(self.as_ptr()),
-                    ptr,
-                ),
-                ModTarget::Parent(ptr) => (
-                    current.parent,
-                    ReturnPtr::ParentOf(old_node_ptr),
-                    ReturnPtr::ParentOf(self.as_ptr()),
-                    ptr,
-                ),
+            let (old_ptr, ret_ptr, new_ptr) = match modifier.modification {
+                ModTarget::Right(ptr) => (current.right, ReturnPtr::RightOf(self.as_ptr()), ptr),
+                ModTarget::Left(ptr) => (current.left, ReturnPtr::LeftOf(self.as_ptr()), ptr),
+                ModTarget::Parent(ptr) => (current.parent, ReturnPtr::ParentOf(self.as_ptr()), ptr),
                 _ => unreachable!(),
             };
 
             // Adiciona o mod
             self.mods.push(modifier);
 
-            // Remove o nó antigo dos ponteiros de retorno do nó anterior do campo modificado
+            // Remove o nó atual dos ponteiros de retorno do nó antigo, se necessário
             if let Some(mut node) = old_ptr {
                 let node = unsafe { node.as_mut() };
-                node.return_pts.retain(|ptr| *ptr != old_ret_ptr);
+                node.return_pts.retain(|ptr| *ptr != ret_ptr);
             }
 
-            // Adiciona o nó atual nos ponteiros de retorno do novo nó do campo modificado
+            // Adiciona o nó atual nos ponteiros de retorno do novo nó
             if let Some(mut node) = new_ptr {
                 let node = unsafe { node.as_mut() };
-                node.add_return_ptr(new_ret_ptr);
+                node.add_return_ptr(ret_ptr);
             }
         }
+
+        None
     }
 
     /// Handles the case for add_mod() where the mods field is full.
@@ -213,104 +190,27 @@ where
         // will now be pointing to the new node instead of the old one.
         new_node.return_pts = std::mem::take(&mut self.return_pts);
 
-        // Adds the modifier to the new node, erasing the return pointer from the old node if necessary.
-        let version = modifier.version; // copy version 'cause modifier is getting moved
-        new_node.add_mod_empty(modifier, Some(self.as_ptr()));
-
         // Save a copy of the return pointers for updating the nodes
         let return_pts = new_node.return_pts.clone();
 
         // Then convert new_node into a heap-allocated link
         let new_node = new_node.into_link();
 
-        // Finally, update the nodes that pointed to the old node to point to the new one
+        // And update nodes that pointed to the old node to point to the new one
         for mut return_ptr in return_pts {
-            return_ptr.redirect_node(version, new_node);
+            return_ptr.redirect_node(modifier.version, new_node);
         }
 
-        // Returns a pointer to the new node
+        // Finally, adds the modifier to the new node.
+        let node_ref = unsafe { new_node.unwrap().as_mut() };
+        node_ref.add_mod(modifier);
+        // Remove the mod from the list and immediately apply it:
+        // The node when accessed at the current version should already have the first mod applied
+        let modifier = node_ref.mods.pop().unwrap();
+        node_ref.apply_mod(&modifier);
+
+        // Returns the pointer to the new node
         new_node.unwrap()
-    }
-
-    /// Transplants a node: Switches the node's parent's child from self to target.
-    pub fn transplant(&mut self, target: Link<T>, version: usize) {
-        // Get latest parent link
-        let mut parent_link = self.with_mods().parent;
-
-        // Updates parent to point to target instead of self
-        if let Some(mut parent_ptr) = parent_link {
-            // Gets parent and updated parent
-            let parent = unsafe { parent_ptr.as_mut() };
-            let current_parent = parent.with_mods();
-
-            // Check if we're the parent's left or right child
-            let modifier = if current_parent.left.is_some_and(|ptr| ptr == self.as_ptr()) {
-                Modification::left(target, version)
-            // Else we're the parent's right child
-            } else {
-                Modification::right(target, version)
-            };
-
-            // We need to check if we generated a new node after
-            // add_mod was called to update the parent_link for the target's modification.
-            let new_link = parent.add_mod(modifier);
-            if new_link.is_some() {
-                parent_link = new_link
-            }
-        } else {
-            // TODO: change root
-        }
-
-        // Change the target's parent if the target is not None.
-        if let Some(mut ptr) = target {
-            let target_node = unsafe { ptr.as_mut() };
-            target_node.add_mod(Modification::parent(parent_link, version));
-        }
-    }
-
-    pub fn remove(&mut self, version: usize) {
-        let current_self = self.with_mods();
-
-        if current_self.left.is_none() {
-            self.transplant(current_self.right, version);
-        } else if current_self.right.is_none() {
-            self.transplant(current_self.left, version);
-        } else {
-            // we can unwrap because we're guaranteed to have at least a right child.
-            let mut successor_ptr = self.with_mods().latest_successor().unwrap();
-            let successor_link = Some(successor_ptr);
-            let successor = unsafe { successor_ptr.as_mut() };
-
-            // Remove successor from its place
-            successor.transplant(successor.right, version);
-
-            // Override current_self after the transplant (right could be None)
-            let current_self = self.with_mods();
-
-            // Updates left child
-            successor.add_mod(Modification::left(current_self.left, version));
-            unsafe {
-                current_self
-                    .left
-                    .unwrap()
-                    .as_mut()
-                    .add_mod(Modification::parent(successor_link, version))
-            };
-
-            // Updates successor's right and self.right's parent (if self.right != null)
-            successor.add_mod(Modification::right(current_self.right, version));
-            if current_self.right.is_some() {
-                unsafe {
-                    current_self
-                        .right
-                        .unwrap()
-                        .as_mut()
-                        .add_mod(Modification::parent(successor_link, version))
-                };
-            }
-
-            self.transplant(successor_link, version);
-        }
     }
 
     pub fn latest_successor(&self) -> Link<T> {
@@ -368,8 +268,6 @@ where
         for modifier in &self.mods {
             if modifier.version <= version {
                 new_node.apply_mod(modifier)
-            } else {
-                break;
             }
         }
 
