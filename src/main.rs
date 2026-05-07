@@ -28,11 +28,10 @@ fn execute_command(command: &str, tree: &mut PBTree<i64>) -> Result<(), String> 
     // Divides the command into tokens, then get them one by one
     let mut tokens = command.split(" ");
     let op = tokens.next().unwrap_or("");
-    // Empty line
+    // Empty line - no op
     if op.replace(" ", "") == "" {
         return Ok(());
     }
-
     let num1 = tokens.next().unwrap_or("");
     let num2 = tokens.next().unwrap_or("");
 
