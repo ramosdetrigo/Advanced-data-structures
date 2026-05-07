@@ -52,7 +52,7 @@ fn execute_command(command: &str, tree: &mut PBTree<i64>) -> Result<(), String> 
             )
         }
         "IMP" => {
-            println!("{}", tree.tree_str(parse_int(num1)? as usize));
+            println!("{}", tree.list(parse_int(num1)? as usize));
         }
         _ => return Err("Operação inválida.".to_string()),
     }
