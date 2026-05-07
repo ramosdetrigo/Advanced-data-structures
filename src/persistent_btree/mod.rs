@@ -292,14 +292,15 @@ where
         }
     }
 
-    pub fn remove(&mut self, elem: &T) {
+    pub fn remove(&mut self, elem: &T) -> Option<T> {
         self.version += 1;
 
         let node_link = self.find(elem, self.version);
         if node_link.is_none() {
-            return;
+            return None;
         }
         let mut node = unsafe { node_link.unwrap().as_mut() };
+        let v = node.value.clone();
 
         let latest_node = node.modded_clone();
 
@@ -377,6 +378,8 @@ where
                 }
             }
         }
+
+    return Some(v)
     }
 }
 

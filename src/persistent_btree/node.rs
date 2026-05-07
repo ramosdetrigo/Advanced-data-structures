@@ -236,6 +236,8 @@ where
             // (also adds the return_ptr to the new node since that's how add_mod works.)
             return_ptr.redirect_node(modifier.version, new_node);
         }
+        // nothing points to the old node (self) anymore.
+        self.return_pts.clear();
 
         // Finally, adds the modifier to the new node.
         let node_ref = unsafe { new_node.unwrap().as_mut() };
@@ -258,22 +260,23 @@ where
     }
 
     #[must_use]
+    // Returns the latest successor of the node. Does this by getting the
+    // leftmost node of its right child's subtree.
     pub fn latest_successor(&self) -> Link<T> {
-        let mut successor: Link<T> = self.right;
-        let mut curr_node = self.right;
-        while let Some(node) = curr_node {
+        let mut curr = self.right;
+
+        while let Some(node) = curr {
             let latest = unsafe { node.as_ref().modded_clone() };
-            // If the value of the node is greater than the element,
-            // update successor & search to the left
-            if latest.value > self.value {
-                successor = Some(node);
-                curr_node = latest.left;
-            // Else: search to the right
-            } else {
-                curr_node = latest.right;
+
+            match latest.left {
+                // If there is a node to the left, continue
+                Some(left) => curr = Some(left),
+                // Else: current node is the successor
+                None => return Some(node),
             }
         }
-        successor
+
+        None
     }
 
     #[inline]
