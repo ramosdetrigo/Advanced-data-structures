@@ -15,6 +15,9 @@ O input é só o caminho pro arquivo relativo à pasta em que você rodou o proj
 
 # Descrição do projeto
 A estrutura geral da árvore e as funções de push, remove, successor e print estão no arquivo `src/persistent_btree/mod.rs`. A estrutura e as funções relacionadas ao nó, modificações, etc. estão no arquivo `src/persistent_btree/node.rs`. A estrutura inteira foi escrita de forma que ela pode ordenar qualquer tipo genérico ordenável `T`. Esse é o `<T>` escrito nas especificações abaixo. Para todo propósito prático você pode considerar ele como um tipo `int`. \
+Estrutura do comando para rodar: \
+`make run INPUT=<file path>` ou `cargo run <file path>` \
+Saída: As impressões são mostradas diretamente no terminal. \
 Adicionalmente, o arquivo de entrada aceita comentários! Basta fazer um comentário como em python: `# Assim! Começando com "#"`. Pode ajudar com debugging :) \
 Toda a implementação da interface entre a estrutura e a leitura do arquivo está na `src/main.rs`, e é até que bem simples de entender pelos comentários.
 
