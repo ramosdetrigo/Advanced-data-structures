@@ -213,7 +213,6 @@ where
     /// Handles the case for add_mod() where the mods field is full.
     #[must_use]
     fn add_mod_full(&mut self, modifier: Modification<T>) -> NodePtr<T> {
-        println!("mod_full");
         // Create node copy with empty mods field
         let new_node = self.modded_clone();
 

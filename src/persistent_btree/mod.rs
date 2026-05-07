@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 mod node;
 
 use node::*;
@@ -38,8 +39,7 @@ where
 
             // Read current node
             let (snap, node_depth) = stack.pop().unwrap();
-            let tab = (0..node_depth).map(|_| "-").collect::<String>();
-            result.push_str(&format!("{}(v: {:?}, d: {})\n", tab, snap.value, node_depth));
+            result.push_str(&format!("{:?},{} ", snap.value, node_depth));
 
             // Read right node
             curr_node = snap.right;
@@ -52,7 +52,7 @@ where
     #[must_use]
     // função gerada pelo chatgpt :p
     // só queria algo pra visualizar melhor a árvore
-    pub fn list_tree(&self, version: usize) -> String {
+    pub fn tree_str(&self, version: usize) -> String {
         fn build_tree<T>(
             node: Link<T>,
             version: usize,
@@ -202,11 +202,11 @@ where
         self.version += 1;
         let parent_link = self.find_parent_node(&elem, self.version);
 
-        let tree_ptr = NonNull::from_ref(self);
+        let tree_ptr = NonNull::from(&*self);
         if let Some(mut parent) = parent_link {
             // Accesses the parent's data at current version
             let parent = unsafe { parent.as_mut() };
-            let parent_snapshot = parent.snapshot(self.version);
+            let parent_snapshot = parent.modded_clone();
             let is_left_child: bool = elem < parent_snapshot.value;
 
             // Only creates the new node after the check (prevents moving elem)
@@ -376,6 +376,38 @@ where
                     let _ = right.add_mod(Modification::parent(successor_link, self.version));
                 }
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod pbtree_test {
+    use super::PBTree;
+    #[test]
+    fn basic() {
+        let mut tree: PBTree<i32> = PBTree::new();
+        tree.push(1);
+        tree.push(3); //1
+        tree.push(4);
+        tree.push(5);
+        tree.push(6);
+        tree.remove(&3); //2
+        tree.remove(&4); //3
+        tree.remove(&5); //4
+        tree.remove(&6); //5
+        tree.push(2); //6
+        tree.push(3); //1
+        tree.remove(&3); //2
+        tree.push(3); //3
+        tree.remove(&3); //4
+        tree.push(3); //5
+        tree.remove(&3); //6
+        tree.push(3); //7
+
+        for i in 1..=tree.version() {
+            println!("====== TREE AT VERSION {i} ======");
+            println!("{}", tree.list(i));
+            println!("{}", tree.tree_str(i));
         }
     }
 }
