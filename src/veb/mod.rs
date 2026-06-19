@@ -83,7 +83,7 @@ impl Veb {
             let (c, i) = split_bits(x, self.w);
 
             // cria a cluster se ela não existe na hashmap ainda.
-            if !self.clusters.contains_key(&c) {
+            if !self.clusters.contains_key(c) {
                 self.clusters.insert(c, self.new_halved());
             }
 
@@ -91,7 +91,7 @@ impl Veb {
                 self.resumo_mut().include(c);
             }
 
-            self.clusters.get_mut(&c).unwrap().include(i);
+            self.clusters.get_mut(c).unwrap().include(i);
         }
     }
 
@@ -131,13 +131,13 @@ impl Veb {
         }
 
         let (c, i) = split_bits(x, self.w);
-        let cluster = self.clusters.get_mut(&c).unwrap();
+        let cluster = self.clusters.get_mut(c).unwrap();
         cluster.remove(i);
 
         if cluster.min.is_none() {
             // cluster c ficou vazio: remove ele do resumo (e da memória)
             self.resumo_mut().remove(c);
-            self.clusters.remove(&c);
+            self.clusters.remove(c);
         }
         if self.resumo().min.is_none() {
             // Não existe cluster não-vazio: max = min
@@ -166,7 +166,7 @@ impl Veb {
         let (c, i) = split_bits(x, self.w);
 
         // Se o cluster não está na hashmap, é o mesmo que ele estar vazio.
-        if let Some(cluster) = self.clusters.get(&c) {
+        if let Some(cluster) = self.clusters.get(c) {
             if cluster.max.is_some_and(|max| i < max) {
                 let succ_i = cluster.successor(i).unwrap();
                 return Some(merge_bits(c, succ_i, self.w));
@@ -196,7 +196,7 @@ impl Veb {
         let (c, i) = split_bits(x, self.w);
 
         // Se o cluster não está na hashmap, é o mesmo que ele estar vazio.
-        if let Some(cluster) = self.clusters.get(&c) {
+        if let Some(cluster) = self.clusters.get(c) {
             if cluster.min.is_some_and(|min| i > min) {
                 let pred_i = cluster.predecessor(i).unwrap();
                 return Some(merge_bits(c, pred_i, self.w));

@@ -81,13 +81,13 @@ impl VEBHashMap {
     }
 
     /// Remove um elemento do hashmap, retornando-o. Retorna None se o elemento não está no hashmap.
-    pub fn remove(&mut self, key: &u32) -> Option<Veb> {
+    pub fn remove(&mut self, key: u32) -> Option<Veb> {
         let capacity = self.buckets.len();
-        let idx = hash(*key, capacity);
+        let idx = hash(key, capacity);
         let bucket = &mut self.buckets[idx];
 
         // busca no bucket
-        if let Some(pos) = bucket.iter().position(|(k, _)| k == key) {
+        if let Some(pos) = bucket.iter().position(|(k, _)| *k == key) {
             // remove trocando com o último item do vec - O(1)
             let removed_val = bucket.swap_remove(pos).1;
             self.len -= 1;
@@ -104,10 +104,10 @@ impl VEBHashMap {
     }
 
     /// Retorna um Option com uma referência ao elemento na chave de entrada. None se não existe
-    pub fn get(&self, key: &u32) -> Option<&Veb> {
-        let idx = hash(*key, self.buckets.len());
+    pub fn get(&self, key: u32) -> Option<&Veb> {
+        let idx = hash(key, self.buckets.len());
         for (k, v) in &self.buckets[idx] {
-            if k == key {
+            if *k == key {
                 return Some(v);
             }
         }
@@ -115,10 +115,10 @@ impl VEBHashMap {
     }
 
     /// Retorna um Option com uma referência mutável ao elemento na chave de entrada. None se não existe
-    pub fn get_mut(&mut self, key: &u32) -> Option<&mut Veb> {
-        let idx = hash(*key, self.buckets.len());
+    pub fn get_mut(&mut self, key: u32) -> Option<&mut Veb> {
+        let idx = hash(key, self.buckets.len());
         for (k, v) in &mut self.buckets[idx] {
-            if k == key {
+            if *k == key {
                 return Some(v);
             }
         }
@@ -126,7 +126,7 @@ impl VEBHashMap {
     }
 
     /// Retorna true se existe um elemento nessa chave no hashmap
-    pub fn contains_key(&self, key: &u32) -> bool {
+    pub fn contains_key(&self, key: u32) -> bool {
         self.get(key).is_some()
     }
 }
@@ -141,6 +141,6 @@ fn hash(key: u32, capacity: usize) -> usize {
 impl Index<u32> for VEBHashMap {
     type Output = Veb;
     fn index(&self, index: u32) -> &Self::Output {
-        self.get(&index).unwrap()
+        self.get(index).unwrap()
     }
 }
