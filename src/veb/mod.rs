@@ -84,9 +84,10 @@ impl Veb {
         // Caso 2: checa se resposta está no cluster c
         let (c, i) = split_bits(x, self.w);
 
-        if let Some(cluster) = &self.clusters.get(&c) {
+        if let Some(cluster) = self.clusters.get(&c) {
             if cluster.max.is_some_and(|max| i < max) {
-                return Some(merge_bits(c, cluster.successor(x).unwrap(), self.w));
+                let succ_i = cluster.successor(i).unwrap();
+                return Some(merge_bits(c, succ_i, self.w));
             }
         }
 
@@ -94,6 +95,30 @@ impl Veb {
         let next_c = self.resumo.successor(c)?; // procura primeiro cluster não-vazio depois de C
         let next_i = self.clusters[&next_c].min.unwrap(); // unwrap garantido: cluster não vazio
         Some(merge_bits(next_c, next_i, self.w))
+    }
+
+    pub fn predecessor(&self, x: u32) -> Option<u32> {
+        // Caso 1: check básico de min/max
+        if x > self.max? {
+            return self.max;
+        } else if x <= self.min? {
+            return None;
+        }
+
+        // Caso 2: checa se resposta está no cluster c
+        let (c, i) = split_bits(x, self.w);
+
+        if let Some(cluster) = self.clusters.get(&c) {
+            if cluster.min.is_some_and(|min| i > min) {
+                let pred_i = cluster.predecessor(i).unwrap();
+                return Some(merge_bits(c, pred_i, self.w));
+            }
+        }
+
+        // Caso 3: resposta não está no cluster c -> checa resumo
+        let prev_c = self.resumo.predecessor(c)?; // procura primeiro cluster não-vazio depois de C
+        let prev_i = self.clusters[&prev_c].max.unwrap(); // unwrap garantido: cluster não vazio
+        Some(merge_bits(prev_c, prev_i, self.w))
     }
 }
 
