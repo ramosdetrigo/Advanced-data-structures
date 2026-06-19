@@ -36,13 +36,13 @@ fn execute_command(command: &str, veb: &mut Veb) -> Result<(), String> {
             let num = tokens.next().ok_or("Esperado um número após INC")?;
             let x = parse_int(num)?;
             veb.include(x);
-            println!("INC {x}")
+            // println!("INC {x}")
         }
         "REM" => {
             let num = tokens.next().ok_or("Esperado um número após REM")?;
             let x = parse_int(num)?;
             veb.remove(x);
-            println!("REM {x}")
+            // println!("REM {x}")
         }
         "SUC" => {
             let num = tokens.next().ok_or("Esperado um número após SUC")?;

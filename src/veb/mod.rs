@@ -1,11 +1,14 @@
-use std::{cell::OnceCell, collections::HashMap};
+use std::cell::OnceCell;
+
+mod hashmap;
+use hashmap::VEBHashMap;
 
 pub struct Veb {
     w: u32,
     min: Option<u32>,
     max: Option<u32>, // CÓPIA do maior elemento em V
     // w' = w/2
-    clusters: HashMap<u32, Veb>,
+    clusters: VEBHashMap,
     resumo: OnceCell<Box<Veb>>,
 }
 
@@ -23,7 +26,7 @@ impl Veb {
             w,
             min: None,
             max: None,
-            clusters: HashMap::new(),
+            clusters: VEBHashMap::new(),
             resumo: OnceCell::new(),
         }
     }
@@ -36,7 +39,7 @@ impl Veb {
             w: self.w / 2,
             min: None,
             max: None,
-            clusters: HashMap::new(),
+            clusters: VEBHashMap::new(),
             resumo: OnceCell::new(),
         }
     }
@@ -84,7 +87,7 @@ impl Veb {
                 self.clusters.insert(c, self.new_halved());
             }
 
-            if self.clusters[&c].min.is_none() {
+            if self.clusters[c].min.is_none() {
                 self.resumo_mut().include(c);
             }
 
@@ -120,7 +123,7 @@ impl Veb {
 
             // x <- v.min <- <c, i <- v.cluster[c].min>
             let c_next = self.resumo().min.unwrap(); // min is_some
-            let i_min = self.clusters[&c_next].min.unwrap(); // cluster não-vazio
+            let i_min = self.clusters[c_next].min.unwrap(); // cluster não-vazio
             let merge = merge_bits(c_next, i_min, self.w);
 
             self.min = Some(merge);
@@ -141,7 +144,7 @@ impl Veb {
             self.max = self.min
         } else {
             let c_m = self.resumo().max.unwrap(); // min is_some -> max is_some
-            let i_m = self.clusters[&c_m].max.unwrap(); // cluster não-vazio
+            let i_m = self.clusters[c_m].max.unwrap(); // cluster não-vazio
             self.max = Some(merge_bits(c_m, i_m, self.w));
         }
     }
@@ -172,7 +175,7 @@ impl Veb {
 
         // Caso 3: resposta não está no cluster c -> checa resumo
         let next_c = self.resumo().successor(c)?; // procura primeiro cluster não-vazio depois de C
-        let next_i = self.clusters[&next_c].min.unwrap(); // unwrap garantido: cluster não vazio
+        let next_i = self.clusters[next_c].min.unwrap(); // unwrap garantido: cluster não vazio
         Some(merge_bits(next_c, next_i, self.w))
     }
 
@@ -202,7 +205,7 @@ impl Veb {
 
         // Caso 3: resposta não está no cluster c -> checa resumo
         if let Some(prev_c) = self.resumo().predecessor(c) {
-            let prev_i = self.clusters[&prev_c].max.unwrap();
+            let prev_i = self.clusters[prev_c].max.unwrap();
             return Some(merge_bits(prev_c, prev_i, self.w));
         }
 
@@ -227,7 +230,7 @@ impl Veb {
         // para cada cluster não-vazio
         let summary_elems = self.resumo().collect();
         for c in summary_elems {
-            let cluster = &self.clusters[&c];
+            let cluster = &self.clusters[c];
             let sub_elems = cluster.collect();
 
             // reconstrói os valores e formata
@@ -261,7 +264,7 @@ impl Veb {
         // pra cada cluster não vazio, coleta seus elementos
         let summary_elems = self.resumo().collect();
         for c in summary_elems {
-            let cluster = &self.clusters[&c];
+            let cluster = &self.clusters[c];
             let sub_elems = cluster.collect();
 
             // reconstrói os valores
