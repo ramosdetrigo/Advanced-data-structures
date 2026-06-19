@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 pub struct Veb {
-    u: u32,
     w: u32,
     min: Option<u32>,
     max: Option<u32>, // CÓPIA do maior elemento em V
@@ -16,8 +15,7 @@ impl Veb {
             self.min = Some(x);
             self.max = Some(x);
         } else {
-            let c = higher_bits(x, self.w);
-            let i = lower_bits(x, self.w);
+            let (c, i) = split_bits(x, self.w);
 
             if x < self.min.unwrap() {
                 std::mem::swap(&mut x, self.min.as_mut().unwrap());
@@ -35,6 +33,46 @@ impl Veb {
         }
     }
 
+    pub fn remove(&mut self, mut x: u32) {
+        if self.min.is_none() {
+            // veb vazia
+            return;
+        }
+
+        if x == self.min.unwrap() {
+            // Não existe próximo cluster não-vazio: tudo vazio. É só remover o min
+            if self.resumo.min.is_none() {
+                self.min = None;
+                return;
+            }
+
+            // x <- v.min <- <c, i <- v.cluster[c].min>
+            let c_next = self.resumo.min.unwrap(); // min is_some
+            let i_min = self.clusters[&c_next].min.unwrap(); // cluster não-vazio
+            let merge = merge_bits(c_next, i_min, self.w);
+
+            self.min = Some(merge);
+            x = merge;
+        }
+
+        let (c, i) = split_bits(x, self.w);
+        let cluster = self.clusters.get_mut(&c).unwrap();
+        cluster.remove(i);
+
+        if cluster.min.is_none() {
+            // cluster c ficou vazio: remove ele do resumo
+            self.resumo.remove(c);
+        }
+        if self.resumo.min.is_none() {
+            // Não existe cluster não-vazio: max = min
+            self.max = self.min
+        } else {
+            let c_m = self.resumo.max.unwrap(); // min is_some -> max is_some
+            let i_m = self.clusters[&c_m].max.unwrap(); // cluster não-vazio
+            self.max = Some(merge_bits(c_m, i_m, self.w));
+        }
+    }
+
     pub fn successor(&self, x: u32) -> Option<u32> {
         // Caso 1: check básico de min/max
         if x < self.min? {
@@ -44,8 +82,7 @@ impl Veb {
         }
 
         // Caso 2: checa se resposta está no cluster c
-        let i = lower_bits(x, self.w);
-        let c = higher_bits(x, self.w);
+        let (c, i) = split_bits(x, self.w);
 
         if let Some(cluster) = &self.clusters.get(&c) {
             if cluster.max.is_some_and(|max| i < max) {
@@ -58,6 +95,10 @@ impl Veb {
         let next_i = self.clusters[&next_c].min.unwrap(); // unwrap garantido: cluster não vazio
         Some(merge_bits(next_c, next_i, self.w))
     }
+}
+
+fn split_bits(x: u32, w: u32) -> (u32, u32) {
+    (higher_bits(x, w), lower_bits(x, w))
 }
 
 fn lower_bits(x: u32, w: u32) -> u32 {
