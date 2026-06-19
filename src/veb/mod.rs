@@ -31,7 +31,7 @@ impl Veb {
     #[inline]
     #[must_use]
     fn new_halved(&self) -> Self {
-        assert!(self.w > 2, "Folha (w = 2) tentou se dividir.");
+        assert!(self.w > 1, "Folha (w = 1) tentou se dividir.");
         Self {
             w: self.w / 2,
             min: None,
@@ -59,12 +59,22 @@ impl Veb {
             self.min = Some(x);
             self.max = Some(x);
         } else {
+            // abortar se duplicata
+            if x == self.min.unwrap() || x == self.max.unwrap() {
+                return;
+            }
+
             if x < self.min.unwrap() {
                 std::mem::swap(&mut x, self.min.as_mut().unwrap());
             }
 
             if x > self.max.unwrap() {
                 self.max = Some(x);
+            }
+
+            // caso base
+            if self.w == 1 {
+                return;
             }
 
             let (c, i) = split_bits(x, self.w);
@@ -85,6 +95,19 @@ impl Veb {
     pub fn remove(&mut self, mut x: u32) {
         if self.min.is_none() {
             // veb vazia
+            return;
+        }
+
+        // caso base: folha que guarda 2 elementos
+        if self.w == 1 {
+            if self.min == self.max {
+                self.min = None;
+                self.max = None;
+            } else if x == self.min.unwrap() {
+                self.min = self.max;
+            } else {
+                self.max = self.min;
+            }
             return;
         }
 
@@ -131,6 +154,11 @@ impl Veb {
             return None;
         }
 
+        // caso base
+        if self.w == 1 {
+            return self.max;
+        }
+
         // Caso 2: checa se resposta está no cluster c
         let (c, i) = split_bits(x, self.w);
 
@@ -156,6 +184,11 @@ impl Veb {
             return None;
         }
 
+        // caso base
+        if self.w == 1 {
+            return self.min;
+        }
+
         // Caso 2: checa se resposta está no cluster c
         let (c, i) = split_bits(x, self.w);
 
@@ -168,9 +201,13 @@ impl Veb {
         }
 
         // Caso 3: resposta não está no cluster c -> checa resumo
-        let prev_c = self.resumo().predecessor(c)?; // procura primeiro cluster não-vazio depois de C
-        let prev_i = self.clusters[&prev_c].max.unwrap(); // unwrap garantido: cluster não vazio
-        Some(merge_bits(prev_c, prev_i, self.w))
+        if let Some(prev_c) = self.resumo().predecessor(c) {
+            let prev_i = self.clusters[&prev_c].max.unwrap();
+            return Some(merge_bits(prev_c, prev_i, self.w));
+        }
+
+        // Caso 4: predecessor é o mínimo: não há clusters anteriores
+        self.min
     }
 
     pub fn imp(&self) -> String {
@@ -181,9 +218,9 @@ impl Veb {
 
         let mut out = format!("Min: {}", self.min.unwrap());
 
-        // Se w == 2 (folha), não tem clusters pra mostrar
+        // Se w == 1 (folha), não tem clusters pra mostrar
         // (max == min, então não tem mais elementos)
-        if self.w == 2 {
+        if self.w == 1 {
             return out;
         }
 
@@ -194,10 +231,7 @@ impl Veb {
             let sub_elems = cluster.collect();
 
             // reconstrói os valores e formata
-            let elementos: Vec<String> = sub_elems
-                .iter()
-                .map(|i| merge_bits(c, *i, self.w).to_string())
-                .collect();
+            let elementos: Vec<String> = sub_elems.iter().map(|i| i.to_string()).collect();
 
             out.push_str(&format!(", C[{}]: {}", c, elementos.join(", ")));
         }
@@ -216,9 +250,11 @@ impl Veb {
         // o mínimo está na raiz, então adiciona primeiro
         out.push(self.min.unwrap());
 
-        // edge case: w == 2: min é o único elemento possível
-        if self.w == 2 {
-            // max == min. não se inseriria algo em um cluster dessa VEB.
+        // edge case: w == 1: min é o único elemento possível
+        if self.w == 1 {
+            if self.min != self.max {
+                out.push(self.max.unwrap());
+            }
             return out;
         }
 
