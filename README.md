@@ -1,5 +1,5 @@
 # Estrutura de van Emde Boas
-Aluno: Júlia Andrade Ramos \
+Aluna: Júlia Andrade Ramos \
 Matrícula: 558279
 
 # Linguagem de programação usada:
