@@ -12,11 +12,35 @@ pub struct Veb {
 }
 
 impl Veb {
+    pub fn include(&mut self, mut x: u32) {
+        if self.min.is_none() {
+            self.min = Some(x);
+            self.max = Some(x);
+        } else {
+            let c = higher_bits(x);
+            let i = lower_bits(x);
+
+            if x < self.min.unwrap() {
+                std::mem::swap(&mut x, self.min.as_mut().unwrap());
+            }
+
+            if x > self.max.unwrap() {
+                self.max = Some(x);
+            }
+
+            if self.clusters[&c].min.is_none() {
+                self.resumo.include(c);
+            }
+
+            self.clusters.get_mut(&c).unwrap().include(i);
+        }
+    }
+
     pub fn successor(&self, x: u32) -> Option<u32> {
         // Caso 1: check básico de min/max
-        if self.min.is_none_or(|min| x < min) {
+        if x < self.min? {
             return self.min;
-        } else if self.max.is_some_and(|max| x >= max) {
+        } else if x >= self.max? {
             return None;
         }
 
