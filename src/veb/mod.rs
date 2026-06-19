@@ -59,8 +59,6 @@ impl Veb {
             self.min = Some(x);
             self.max = Some(x);
         } else {
-            let (c, i) = split_bits(x, self.w);
-
             if x < self.min.unwrap() {
                 std::mem::swap(&mut x, self.min.as_mut().unwrap());
             }
@@ -68,6 +66,8 @@ impl Veb {
             if x > self.max.unwrap() {
                 self.max = Some(x);
             }
+
+            let (c, i) = split_bits(x, self.w);
 
             // cria a cluster se ela não existe na hashmap ainda.
             if !self.clusters.contains_key(&c) {
